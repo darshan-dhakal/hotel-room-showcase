@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -11,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { getRoomByType, rooms } from '@/data/roomData';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -76,6 +76,7 @@ const BookingPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingData, setBookingData] = useState<BookingFormValues | null>(null);
+  const [noAvailability, setNoAvailability] = useState(false);
 
   const defaultValues: Partial<BookingFormValues> = {
     roomType: preselectedRoomType || "",
@@ -97,6 +98,13 @@ const BookingPage = () => {
   const selectedRoomType = form.watch("roomType");
   const selectedRoom = getRoomByType(selectedRoomType);
   const maxOccupancy = selectedRoom?.maxOccupancy || 2;
+
+  // Reset no availability error when form values change
+  useEffect(() => {
+    if (noAvailability) {
+      setNoAvailability(false);
+    }
+  }, [form.watch("checkInDate"), form.watch("roomType")]);
 
   useEffect(() => {
     if (selectedRoomType) {
@@ -122,20 +130,35 @@ const BookingPage = () => {
     }
 
     setIsSubmitting(true);
+    setNoAvailability(false);
 
     try {
       // In a real application, this would be an API call
       // Simulate API call with timeout
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Simulate success response
-      setBookingSuccess(true);
-      setBookingData(data);
+      // Simulate room availability check - 30% chance of no availability for demo purposes
+      const isRoomAvailable = Math.random() > 0.3;
       
-      toast({
-        title: "Booking Submitted",
-        description: "Your booking request has been successfully submitted!",
-      });
+      if (isRoomAvailable) {
+        // Simulate success response
+        setBookingSuccess(true);
+        setBookingData(data);
+        
+        toast({
+          title: "Booking Submitted",
+          description: "Your booking request has been successfully submitted!",
+        });
+      } else {
+        // No availability scenario
+        setNoAvailability(true);
+        toast({
+          title: "Booking Failed",
+          description: "Sorry! There is no room available for the selected date and room type.",
+          variant: "destructive",
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -220,6 +243,16 @@ const BookingPage = () => {
               Fill out the form below to reserve your room. All fields are required.
             </p>
           </div>
+
+          {noAvailability && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertTitle>Sorry! There is no room available!</AlertTitle>
+              <AlertDescription>
+                Unfortunately, there are no available rooms of the selected type on your chosen date. 
+                Please select a different date or room type.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="bg-white p-8 rounded-lg shadow-md">
             <Form {...form}>
