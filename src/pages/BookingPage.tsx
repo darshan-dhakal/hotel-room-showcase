@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -39,6 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const bookingFormSchema = z.object({
   fullName: z.string().min(2, {
@@ -135,29 +135,42 @@ const BookingPage = () => {
     setNoAvailability(false);
 
     try {
+      console.log("Starting booking process with data:", data);
+
       // Simulate room availability check - 30% chance of no availability for demo purposes
       const isRoomAvailable = Math.random() > 0.3;
       
       if (isRoomAvailable) {
-        // Save booking to Supabase
-        const { error } = await supabase.from('bookings').insert({
+        // Prepare booking data for Supabase
+        const bookingData = {
           room_type: data.roomType,
           full_name: data.fullName,
           email: data.email,
           phone: data.phone,
           check_in_date: data.checkInDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
           guests: parseInt(data.guests)
-        });
+        };
+
+        console.log("Sending booking data to Supabase:", bookingData);
+        
+        // Save booking to Supabase - with improved error handling
+        const { data: insertedData, error } = await supabase
+          .from('bookings')
+          .insert(bookingData)
+          .select();
         
         if (error) {
           console.error('Error saving booking:', error);
           toast({
             title: "Booking Failed",
-            description: "There was an error saving your booking. Please try again.",
+            description: `Database error: ${error.message}`,
             variant: "destructive",
           });
+          setIsSubmitting(false);
           return;
         }
+
+        console.log("Booking successfully saved:", insertedData);
 
         // If successfully saved to Supabase
         setBookingSuccess(true);
