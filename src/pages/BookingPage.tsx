@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -6,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -133,15 +135,31 @@ const BookingPage = () => {
     setNoAvailability(false);
 
     try {
-      // In a real application, this would be an API call
-      // Simulate API call with timeout
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
       // Simulate room availability check - 30% chance of no availability for demo purposes
       const isRoomAvailable = Math.random() > 0.3;
       
       if (isRoomAvailable) {
-        // Simulate success response
+        // Save booking to Supabase
+        const { error } = await supabase.from('bookings').insert({
+          room_type: data.roomType,
+          full_name: data.fullName,
+          email: data.email,
+          phone: data.phone,
+          check_in_date: data.checkInDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+          guests: parseInt(data.guests)
+        });
+        
+        if (error) {
+          console.error('Error saving booking:', error);
+          toast({
+            title: "Booking Failed",
+            description: "There was an error saving your booking. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // If successfully saved to Supabase
         setBookingSuccess(true);
         setBookingData(data);
         
@@ -160,6 +178,7 @@ const BookingPage = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error) {
+      console.error('Error in booking process:', error);
       toast({
         title: "Error",
         description: "There was an error submitting your booking. Please try again.",
